@@ -1,5 +1,16 @@
-FROM golang:1.7
-RUN git clone https://github.com/docker/docker.git /go/src/github.com/docker/docker/
-ADD ssd.go /
-RUN go build /ssd.go
-ENTRYPOINT ["./ssd"]
+FROM ubuntu:16.04
+MAINTAINER Santhosh Manohar <santhosh@docker.com>
+RUN apt-get update && apt-get install -y \
+        dnsutils \
+        iptables \
+        build-essential \
+        dnsmasq \
+        ipvsadm \
+        iperf \
+        curl \
+        strace \
+	util-linux \
+	python-pip
+ADD ssd.py /
+RUN pip install docker
+CMD [ "python", "./ssd.py"]
