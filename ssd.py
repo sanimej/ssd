@@ -23,7 +23,7 @@ def get_namespaces(data, ingress=None):
 
 
 def check_network(nw_name, ingress=None):
-    print "Verifying LB programming for containers on network %s" % nw_name
+    print "Verifying LB programming for containers on network %s..." % nw_name
 
     data = cli.inspect_network(nw_name)
 
@@ -38,7 +38,6 @@ def check_network(nw_name, ingress=None):
         for task in svalue["Tasks"]:
             tasks.append(str(task["EndpointIP"]))
         stasks[fwmarks[str(service)]] = tasks
-    print stasks
 
     spaces = get_namespaces(data, ingress)
     for s in spaces:
