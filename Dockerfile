@@ -13,4 +13,4 @@ RUN apt-get update && apt-get install -y \
 	python-pip
 ADD ssd.py /
 RUN pip install docker
-CMD [ "python", "./ssd.py"]
+ENTRYPOINT [ "python", "/ssd.py"]

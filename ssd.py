@@ -11,21 +11,27 @@ ipv4match = re.compile(
 )
 
 
-def get_namespaces(data, ingress=None):
-    if ingress is not None:
-        return ["/var/run/docker/netns/ingress_sbox"]
+def get_namespaces(data, ingress=False):
+    if ingress is True:
+        return {"Ingress":"/var/run/docker/netns/ingress_sbox"}
     else:
         spaces =[]
-        sandboxes = {str(c) for c in data["Containers"]}
+        for c in data["Containers"]:
+            sandboxes = {str(c) for c in data["Containers"]}
+
+        containers = {}
         for s in sandboxes:
             spaces.append(str(cli.inspect_container(s)["NetworkSettings"]["SandboxKey"]))
-        return spaces
+            inspect = cli.inspect_container(s)
+            containers[str(inspect["Name"])] = str(inspect["NetworkSettings"]["SandboxKey"])
+        return containers
 
 
-def check_network(nw_name, ingress=None):
-    print "Verifying LB programming for containers on network %s..." % nw_name
+def check_network(nw_name, ingress=False):
 
-    data = cli.inspect_network(nw_name)
+    print "Verifying LB programming for containers on network %s" % nw_name
+
+    data = cli.inspect_network(nw_name, verbose=True)
 
     services = data["Services"]
     fwmarks = {str(service): str(svalue["LocalLBIndex"]) for service, svalue in services.items()}
@@ -39,9 +45,10 @@ def check_network(nw_name, ingress=None):
             tasks.append(str(task["EndpointIP"]))
         stasks[fwmarks[str(service)]] = tasks
 
-    spaces = get_namespaces(data, ingress)
-    for s in spaces:
-        ipvs = subprocess.check_output(['/usr/bin/nsenter', '--net=%s' % s, '/sbin/ipvsadm', '-ln'])
+    containers = get_namespaces(data, ingress)
+    for container, namespace in containers.items():
+        print "Verifying container %s..." % container,
+        ipvs = subprocess.check_output(['/usr/bin/nsenter', '--net=%s' % namespace, '/sbin/ipvsadm', '-ln'])
 
         mark = ""
         realmark = {}
@@ -70,6 +77,8 @@ def check_network(nw_name, ingress=None):
                 print "kernel IPVS backend tasks:"
                 for task in realmark[key]:
                     print task
+            else:
+                print "OK"
 
 if __name__ == '__main__':
     if len(sys.argv) is not 2:
@@ -78,5 +87,8 @@ if __name__ == '__main__':
 
     cli = docker.APIClient(base_url='unix://var/run/docker.sock')
 
-    check_network(sys.argv[1])
-    check_network("ingress", "true")
+    if sys.argv[1] == "ingress":
+        check_network("ingress", ingress=True)
+    else:
+        check_network(sys.argv[1])
+        check_network("ingress", ingress=True)
