@@ -4,6 +4,7 @@ ENV PACKAGES="\
     musl \
     linux-headers \
     build-base \
+    util-linux \
     bash \
     git \
     ca-certificates \

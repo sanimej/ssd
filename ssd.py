@@ -1,7 +1,9 @@
+import sys, signal, time
 import docker
 import re
 import subprocess
-import sys
+import json
+import hashlib
 
 ipv4match = re.compile(
     r'(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9]).' +
@@ -48,7 +50,7 @@ def check_network(nw_name, ingress=False):
     containers = get_namespaces(data, ingress)
     for container, namespace in containers.items():
         print "Verifying container %s..." % container,
-        ipvs = subprocess.check_output(['/usr/bin/nsenter', '--net=%s' % namespace, '/sbin/ipvsadm', '-ln'])
+        ipvs = subprocess.check_output(['/usr/bin/nsenter', '--net=%s' % namespace, '/usr/sbin/ipvsadm', '-ln'])
 
         mark = ""
         realmark = {}
@@ -81,14 +83,60 @@ def check_network(nw_name, ingress=False):
                 print "OK"
 
 if __name__ == '__main__':
-    if len(sys.argv) is not 2:
-        print 'Usage: ssd.py network-name'
+    if len(sys.argv) < 2:
+        print 'Usage: ssd.py network-name [gossip-consistency]'
         sys.exit()
 
-    cli = docker.APIClient(base_url='unix://var/run/docker.sock')
-
-    if sys.argv[1] == "ingress":
-        check_network("ingress", ingress=True)
+    cli = docker.APIClient(base_url='unix://var/run/docker.sock', version='auto')
+    if len(sys.argv) == 3:
+        command = sys.argv[2]
     else:
-        check_network(sys.argv[1])
-        check_network("ingress", ingress=True)
+        command = 'default'
+
+    if command == 'gossip-consistency':
+        cspec = docker.types.ContainerSpec(
+            image='sanimej/ssd',
+            args=[sys.argv[1], 'gossip-hash'],
+            mounts=[docker.types.Mount('/var/run/docker.sock', '/var/run/docker.sock', type='bind')]
+        )
+        mode = docker.types.ServiceMode(
+            mode='global'
+        )
+        task_template = docker.types.TaskTemplate(cspec)
+
+        cli.create_service(task_template, name='gossip-hash', mode=mode)
+        #TODO change to a deterministic way to check if the service is up.
+        time.sleep(5)
+        output = cli.service_logs('gossip-hash', stdout=True, stderr=True)
+        for line in output:
+            print(line)
+        if cli.remove_service('gossip-hash') is not True:
+            print("Deleting gossip-hash service failed")
+    elif command == 'gossip-hash':
+        data = cli.inspect_network(sys.argv[1], verbose=True)
+        services = data["Services"]
+        md5 = hashlib.md5()
+        entries = []
+        for service, value in services.items():
+            entries.append(service)
+            entries.append(value["VIP"])
+            for task in value["Tasks"]:
+                for key, val in task.items():
+                    if isinstance(val, dict):
+                        for k, v in val.items():
+                            entries.append(v)
+                    else:
+                        entries.append(val)
+        entries.sort()
+        for e in entries:
+            md5.update(e)
+        print(md5.hexdigest())
+        sys.stdout.flush()
+        while True:
+           signal.pause()
+    elif command == 'default':
+        if sys.argv[1] == "ingress":
+            check_network("ingress", ingress=True)
+        else:
+            check_network(sys.argv[1])
+            check_network("ingress", ingress=True)
