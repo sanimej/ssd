@@ -1,16 +1,36 @@
-FROM ubuntu:16.04
+FROM alpine:3.5
 MAINTAINER Santhosh Manohar <santhosh@docker.com>
-RUN apt-get update && apt-get install -y \
-        dnsutils \
-        iptables \
-        build-essential \
-        dnsmasq \
-        ipvsadm \
-        iperf \
-        curl \
-        strace \
-	util-linux \
-	python-pip
+ENV PACKAGES="\
+    musl \
+    linux-headers \
+    build-base \
+    bash \
+    git \
+    ca-certificates \
+    python2 \
+    python2-dev \
+    py-setuptools \
+    iproute2 \
+    curl \
+    strace \
+    drill \
+    ipvsadm \
+    iperf \
+    ethtool \
+"
+
+RUN echo \
+    && echo "http://nl.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
+    && apk update \
+    && apk add --no-cache $PACKAGES \
+    && if [[ ! -e /usr/bin/python ]];        then ln -sf /usr/bin/python2.7 /usr/bin/python; fi \
+    && if [[ ! -e /usr/bin/python-config ]]; then ln -sf /usr/bin/python2.7-config /usr/bin/python-config; fi \
+    && if [[ ! -e /usr/bin/easy_install ]];  then ln -sf /usr/bin/easy_install-2.7 /usr/bin/easy_install; fi \
+    && easy_install pip \
+    && pip install --upgrade pip \
+    && if [[ ! -e /usr/bin/pip ]]; then ln -sf /usr/bin/pip2.7 /usr/bin/pip; fi \
+    && echo
+
 ADD ssd.py /
-RUN pip install docker
+RUN pip install git+git://github.com/docker/docker-py.git
 ENTRYPOINT [ "python", "/ssd.py"]
