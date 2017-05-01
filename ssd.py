@@ -49,7 +49,7 @@ def check_network(nw_name, ingress=False):
 
     containers = get_namespaces(data, ingress)
     for container, namespace in containers.items():
-        print "Verifying container %s..." % container,
+        print "Verifying container %s..." % container
         ipvs = subprocess.check_output(['/usr/bin/nsenter', '--net=%s' % namespace, '/usr/sbin/ipvsadm', '-ln'])
 
         mark = ""
@@ -67,11 +67,11 @@ def check_network(nw_name, ingress=False):
             else:
                 mark = ""
         for key in realmark:
+            service = "--Invalid--"
+            for sname, idx in fwmarks.items():
+                if key == idx:
+                    service = sname
             if len(set(realmark[key])) != len(set(stasks[key])):
-                for fw in fwmarks:
-                    if key == fw:
-                        service = fwmarks[fw]
-
                 print "Incorrect LB Programming for service %s" % service
                 print "control-plane backend tasks:"
                 for task in stasks[key]:
@@ -80,7 +80,7 @@ def check_network(nw_name, ingress=False):
                 for task in realmark[key]:
                     print task
             else:
-                print "OK"
+                print "service %s... OK" % service
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
