@@ -1,29 +1,45 @@
-# ssd
-Docker Swarm Service Driller
-(Work In Progress)
+# Docker Swarm Service Driller(ssd)
 
-ssd is a troubleshooting utility for swarm mode docker networks. ssd checks the 
-consistency of the docker network control-plane state with what is programmed
-in the kernel space.
+ssd is a troubleshooting utility for Docker swarm networks. 
 
-As an example: Output below shows ssd checking for the load balancer programming on
-network `nw` and reporting the status
+### control-plane and datapath consistency check on a node
+ssd checks for the consistency between docker network control-plane (from the docker daemon in-memory state) and kernel data path programming. Currently the tool checks only for the consistency of the Load balancer (implemented using IPVS).
+
+In a three node swarm cluser ssd status for a overlay network `ov2` which has three services running, each replicated to 3 instances.
 
 ````bash
-user@net16-1:~/ssd# python ssd.py nw1
-Verifying LB programming for containers on network ov1
-Verifying container /s1.3.4czmztrsmuz13nbuw2xippyy6... OK
-Verifying container /s1.2.1ezoscj06ebffixy4mye3n9yb... Incorrect LB Programming for service s1
-control-plane backend tasks:
-10.0.0.3
-10.0.0.4
-10.0.0.5
-kernel IPVS backend tasks:
-10.0.0.4
-10.0.0.5
-Verifying container /s1.1.jroe5ynyj15fyucfq10n8a0ra... OK
+vagrant@net-1:~/code/go/src/github.com/docker/docker-e2e/tests$ docker run -v /var/run/docker.sock:/var/run/docker.sock -v /var/run/docker/netns:/var/run/docker/netns --privileged sanimej/ssd ov2
+Verifying LB programming for containers on network ov2
+Verifying container /s2.3.ltrdwef0iqf90rqauw3ehcs56...
+service s2... OK
+service s3... OK
+service s1... OK
+Verifying container /s3.3.nyhwvdvnocb4wftyhb8dr4fj8...
+service s2... OK
+service s3... OK
+service s1... OK
+Verifying container /s1.3.wwx5tuxhnvoz5vrb8ohphby0r...
+service s2... OK
+service s3... OK
+service s1... OK
 Verifying LB programming for containers on network ingress
-Verifying container Ingress... OK
+Verifying container Ingress...
+service web... OK
 ````
 
-ssd is active WIP right now and will be available to run as a container when its complete.
+### control-plane consistency check across nodes in a cluster
+
+Docker networking uses a gossip protocol to synchronize networking state across nodes  in a cluster. ssd's `gossip-consistency` command verifies if the state maintained by all the nodes are consistent.
+
+````bash
+In a three node cluster with services running on an overlay network ov2 ssd consistency-checker shows 
+
+vagrant@net-1:~/code/go/src/github.com/docker/docker-e2e/tests$ docker run -v /var/run/docker.sock:/var/run/docker.sock -v /var/run/docker/netns:/var/run/docker/netns --privileged sanimej/ssd ov2 gossip-consistency
+61f8d0c1167663965dc1618590f97ddc
+
+61f8d0c1167663965dc1618590f97ddc
+
+61f8d0c1167663965dc1618590f97ddc
+````
+
+This is hash digest of the control-plane state for the network `ov2` from all the cluster nodes. If the values have a mismatch `docker network inspect --verbose` on the individual nodes can help in identifying what the specific difference is.
