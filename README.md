@@ -35,11 +35,11 @@ Docker networking uses a gossip protocol to synchronize networking state across 
 In a three node cluster with services running on an overlay network ov2 ssd consistency-checker shows 
 
 vagrant@net-1:~/code/go/src/github.com/docker/docker-e2e/tests$ docker run -v /var/run/docker.sock:/var/run/docker.sock -v /var/run/docker/netns:/var/run/docker/netns --privileged sanimej/ssd ov2 gossip-consistency
-61f8d0c1167663965dc1618590f97ddc
+Node id: sjfp0ca8f43rvnab6v7f21gq0 gossip hash c57d89094dbb574a37930393278dc282
 
-61f8d0c1167663965dc1618590f97ddc
+Node id: bg228r3q9095grj4wxkqs80oe gossip hash c57d89094dbb574a37930393278dc282
 
-61f8d0c1167663965dc1618590f97ddc
+Node id: 6jylcraipcv2pxdricqe77j5q gossip hash c57d89094dbb574a37930393278dc282
 ````
 
 This is hash digest of the control-plane state for the network `ov2` from all the cluster nodes. If the values have a mismatch `docker network inspect --verbose` on the individual nodes can help in identifying what the specific difference is.

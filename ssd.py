@@ -107,9 +107,9 @@ if __name__ == '__main__':
         cli.create_service(task_template, name='gossip-hash', mode=mode)
         #TODO change to a deterministic way to check if the service is up.
         time.sleep(5)
-        output = cli.service_logs('gossip-hash', stdout=True, stderr=True)
+        output = cli.service_logs('gossip-hash', stdout=True, stderr=True, details=True)
         for line in output:
-            print(line)
+            print("Node id: %s gossip hash %s" % (line[line.find("=")+1:line.find(",")], line[line.find(" ")+1:]))
         if cli.remove_service('gossip-hash') is not True:
             print("Deleting gossip-hash service failed")
     elif command == 'gossip-hash':
