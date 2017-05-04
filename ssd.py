@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import sys, signal, time
 import docker
 import re
