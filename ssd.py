@@ -68,6 +68,16 @@ def check_network(nw_name, ingress=False):
                     realmark[mark].append(format(ip.group(0)))
             else:
                 mark = ""
+        for key in realmark.keys():
+            if key not in stasks:
+                print "LB Index %s" % key, "present in IPVS but missing in docker daemon"
+                del realmark[key]
+
+        for key in stasks.keys():
+            if key not in realmark:
+                print "LB Index %s" % key, "present in docker daemon but missing in IPVS"
+                del stasks[key]
+
         for key in realmark:
             service = "--Invalid--"
             for sname, idx in fwmarks.items():
