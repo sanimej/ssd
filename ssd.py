@@ -14,6 +14,27 @@ ipv4match = re.compile(
     r'(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])'
 )
 
+def check_iptables(name, plist):
+    replace = (':', ',')
+    ports = []
+    for port in plist:
+        for r in replace:
+            port = port.replace(r, ' ')
+
+        p = port.split()
+        ports.append((p[1], p[3]))
+
+    # get the ingress sandbox's docker_gwbridge network IP.
+    # published ports get DNAT'ed to this IP.
+    ip = subprocess.check_output(['/usr/bin/nsenter', '--net=/var/run/docker/netns/ingress_sbox', '/bin/bash', '-c', 'ifconfig eth1 | grep \"inet\\ addr\" | cut -d: -f2 | cut -d\" \" -f1'])
+    ip = ip.rstrip()
+
+    for p in ports:
+        rule = '/sbin/iptables -t nat -C DOCKER-INGRESS -p tcp --dport {0} -j DNAT --to {1}:{2}'.format(p[1], ip, p[1])
+        try:
+            subprocess.check_output(["/bin/bash", "-c", rule])
+        except subprocess.CalledProcessError as e:
+            print "Service {0}: host iptables DNAT rule for port {1} -> ingress sandbox {2}:{3} missing".format(name, p[1], ip, p[1])
 
 def get_namespaces(data, ingress=False):
     if ingress is True:
@@ -48,6 +69,11 @@ def check_network(nw_name, ingress=False):
         for task in svalue["Tasks"]:
             tasks.append(str(task["EndpointIP"]))
         stasks[fwmarks[str(service)]] = tasks
+
+        # for services in ingress network verify the iptables rules
+        # that direct ingress (published port) to backend (target port)
+        if ingress is True:
+            check_iptables(service, svalue["Ports"])
 
     containers = get_namespaces(data, ingress)
     for container, namespace in containers.items():

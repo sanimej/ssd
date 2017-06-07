@@ -8,7 +8,7 @@ ssd checks for the consistency between docker network control-plane (from the do
 In a three node swarm cluser ssd status for a overlay network `ov2` which has three services running, each replicated to 3 instances.
 
 ````bash
-vagrant@net-1:~/code/go/src/github.com/docker/docker-e2e/tests$ docker run -v /var/run/docker.sock:/var/run/docker.sock -v /var/run/docker/netns:/var/run/docker/netns --privileged sanimej/ssd ov2
+vagrant@net-1:~/code/go/src/github.com/docker/docker-e2e/tests$ docker run -v /var/run/docker.sock:/var/run/docker.sock -v /var/run/docker/netns:/var/run/docker/netns --privileged --net=host sanimej/ssd ov2
 Verifying LB programming for containers on network ov2
 Verifying container /s2.3.ltrdwef0iqf90rqauw3ehcs56...
 service s2... OK
@@ -26,6 +26,8 @@ Verifying LB programming for containers on network ingress
 Verifying container Ingress...
 service web... OK
 ````
+
+ssd checks the required iptables programming to direct an incoming packet with the <host ip>:<published port> to the right <backend ip>:<target port>
 
 ### control-plane consistency check across nodes in a cluster
 
